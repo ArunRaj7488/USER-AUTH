@@ -4,7 +4,7 @@ module.exports = ({res, error, message, data = null, status =200}) => {
         console.log(error);
         return res.status(status).send({
             success: "Something went wrong!",
-            error: error      
+            error: error,     
         })
     } else{
         return res.status(status).send(
