@@ -4,6 +4,8 @@ const User = require('../models/user.model');
 const responseHandler = require('../utils/responseHandler');
 const bcrypt = require('bcrypt')
 
+
+// Get all User 
 const getAllUser = async(req, res) => {
     try{
     const user = await User.find();
@@ -13,10 +15,12 @@ const getAllUser = async(req, res) => {
     }
 };
 
+// Add new user
 const createUser = async(req, res) => {
+    try{
     const { mobile_number, email, password } = req.body;
 // check validation of Joi
-const { error } = ValidateUSer(req.body);
+const { error } = validateUSerData(req.body);
 if(error) return responseHandler({res, error: error.details[0].message, status:404});
 // check of duplicate Data
  const user = await User.findOne({ $or: [{email}, {mobile_number}]});
@@ -29,9 +33,39 @@ if(error) return responseHandler({res, error: error.details[0].message, status:4
  const token = new_user.generateAuthToken();
  const { password: temp, ...newUserData } = new_user._doc
  responseHandler({ data: { user: newUserData, token}, res})
+    } catch(error) {
+        responseHandler({ res, error, status: 501 })
+    }
+};
+
+// Login user
+const signUp = async(req, res) => { 
+    try{
+        const { error } = validationLoginData(req.body);
+        if(error) return responseHandler({ res, error: error.details[0].message, status: 401})
+
+        const { email, password } = req.body;
+
+        const user = await User.findOne({ email});
+        if(!user) return responseHandler({ res, error: { message: "Invalid email or password!.."}, status:401});
+
+        // match password
+        const checkPassword = bcrypt.compareSync( password, user.password);
+
+        if(!checkPassword) return responseHandler({ res, error: { message: "Invalid Password!"}})
+
+        const token = user.generateAuthToken();
+        const { password: temp, ...newUserData }  =  user._doc
+        responseHandler({ data: { user: newUserData, token}, res});
+
+    }catch( error){
+        responseHandler({ res, error, status: 501})
+    }
+
 }
 
-const ValidateUSer = (data) => {
+// validation for create User Data
+const validateUSerData = (data) => {
     const schema = Joi.object({
         first_name: Joi.string().required(),
         last_name: Joi.string(),
@@ -45,8 +79,19 @@ const ValidateUSer = (data) => {
     return schema.validate(data)
 }
 
+// validation for login
+
+const validationLoginData = (data) => {
+    const schema = Joi.object({
+        email: Joi.string().required(),
+        password: Joi.string().required()
+    })
+    return schema.validate(data);
+}
+
 
 module.exports = {
     getAllUser, 
-    createUser
+    createUser, 
+    signUp
 }
